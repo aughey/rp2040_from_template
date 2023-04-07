@@ -75,14 +75,16 @@ fn main() -> ! {
                 "    out pins, 1       side 0b10",
                 "    jmp x-- bitloop1  side 0b11",
                 "    out pins, 1       side 0b00",
-                "    set x, 14         side 0b01",
+               // "    set x, 14         side 0b01",
+               "    set x, 30         side 0b01",
                 "",
                 "bitloop0:",
                 "    out pins, 1       side 0b00",
                 "    jmp x-- bitloop0  side 0b01",
                 "    out pins, 1       side 0b10",
                 "public entry_point:",
-                "    set x, 14         side 0b11",
+                // "    set x, 14         side 0b11",
+                "    set x, 30         side 0b11",
                 ".wrap"
                 options(max_program_size = 32) // Optional, defaults to 32
             );
@@ -102,7 +104,7 @@ fn main() -> ! {
 
         let (int, frac) = {
             let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
-            let bit_freq: f64 = 44100.0 * 16.0 * 2.0 * 2.0;
+            let bit_freq: f64 = 44100.0 * 32.0 * 2.0 * 2.0;
             let int: u16 = (system_clock / bit_freq) as u16;
             let frac: u8 = ((system_clock / bit_freq - int as f64) * 256.0) as u8;
             (int, frac)
@@ -176,22 +178,24 @@ fn main() -> ! {
     let mut flip = false;
 
     let mut time = 0.0f32;
-    let mut buf = [0u32; 400];
+    let mut buf = [0u32; 400*2];
     let freq = 441.0f32;
     // Generate the 441hz sine wave in this buf
-    for i in 0..buf.len() {
+    let len = buf.len()/2;
+    for i in 0..len {
         let y = libm::sinf(time * freq * 2.0 * PI);
         let y = y * 0.1;
-        let y = (y * 32767.0) as i16;
+        let y = (y * 2147483648.0) as i32;
         time += 1.0 / 44100.0;
         if time > PI * 2.0 {
             time -= PI * 2.0;
         }
         // Convert i to u without changing the bit pattern
-        let y = unsafe { core::mem::transmute::<i16, u16>(y) };
-        let y = y as u32;
-        let y = y << 16 | y;
-        buf[i] = y;
+        let y = unsafe { core::mem::transmute::<i32, u32>(y) };
+        //let y = y as u32;
+        //let y = y << 16 | y;
+        buf[i*2+0] = y;
+        buf[i*2+1] = y;
     }
 
     let mut bufindex = 0;
