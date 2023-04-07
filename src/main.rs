@@ -10,7 +10,6 @@ use bsp::{entry, hal::prelude::_rphal_pio_PIOExt};
 use defmt::*;
 use defmt_rtt as _;
 use embedded_hal::digital::v2::OutputPin;
-use micromath::F32Ext;
 use panic_probe as _;
 
 // Provide an alias for our BSP so we can switch targets quickly.
@@ -97,7 +96,7 @@ fn main() -> ! {
         let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
 
         // Initialize and start PIO
-        let (mut pio, sm0, sm1, _, _) = pac.PIO0.split(&mut pac.RESETS);
+        let (mut pio, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
         let installed = pio.install(&program).unwrap();
 
         let (int, frac) = {
@@ -184,11 +183,10 @@ fn main() -> ! {
             let y = y * 0.1;
             let y = (y * 2147483648.0) as i32;
             // Convert i to u without changing the bit pattern
-            let y = y as u32;
-            y
+            y as u32
         };
         let y = compute_value(freq);
-        buf[i * 2 + 0] = y;
+        buf[i * 2] = y;
         let y = compute_value(freq * 2.0);
         buf[i * 2 + 1] = y;
         time += 1.0 / 44100.0;
@@ -229,6 +227,7 @@ fn main() -> ! {
         if bufindex >= buf.len() {
             bufindex = 0;
         }
+        //use micromath::F32Ext;
         // let y = (time * 440.0 * 2.0 * PI).sin();
         // let y = y * 0.1;
         // let y = (y * 2147483648.0) as i32;
