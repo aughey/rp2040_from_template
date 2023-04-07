@@ -202,6 +202,7 @@ fn main() -> ! {
     led_pin.set_high().unwrap();
 
     let mut bufindex = 0;
+    time = 0.0;
     loop {
         // // Toggle LED
         flip = !flip;
@@ -243,17 +244,9 @@ fn main() -> ! {
         }
 
         time += 1.0 / 44100.0;
-
-        continue;
-
-        // //  info!("on!");
-        // led_pin.set_high().unwrap();
-        // delay.delay_ms(100);
-        // //     delay.delay_ms(500);
-        // //    info!("off!");
-        // led_pin.set_low().unwrap();
-        // delay.delay_ms(100);
-        // //     delay.delay_ms(500);
+        if time > PI * 2.0 {
+            time -= PI * 2.0;
+        }
     }
 }
 
