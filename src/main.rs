@@ -204,11 +204,11 @@ fn main() -> ! {
     let mut bufindex = 0;
     loop {
         // // Toggle LED
-        // flip = !flip;
-        // match flip {
-        //     true => led_pin.set_high().unwrap(),
-        //     false => led_pin.set_low().unwrap(),
-        // }
+        flip = !flip;
+        match flip {
+            true => led_pin.set_high().unwrap(),
+            false => led_pin.set_low().unwrap(),
+        }
 
         // 440.0hz wave at 44100.0hz sample rate
         // let y = libm::sinf(time * 440.0 * 2.0 * PI);
