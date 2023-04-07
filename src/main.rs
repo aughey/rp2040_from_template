@@ -24,6 +24,21 @@ use bsp::hal::{
     watchdog::Watchdog,
 };
 
+fn toggle(count: usize) -> impl FnMut() -> Option<bool> {
+    let mut curcount = count;
+    let mut toggle_value = false;
+    move || {
+        curcount -= 1;
+        if curcount == 0 {
+            curcount = count;
+            toggle_value = !toggle_value;
+            Some(toggle_value)
+        } else {
+            None
+        }
+    }
+}
+
 #[entry]
 fn main() -> ! {
     info!("Program start");
@@ -57,7 +72,7 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    let mut tx = {
+    let (mut tx, mut rx) = {
         // Define some simple PIO program.
         let program = {
             let program_with_defines = pio_proc::pio_asm!(
@@ -91,13 +106,51 @@ fn main() -> ! {
             program_with_defines.program
         };
 
+        // Define some simple PIO program.
+        let program_input = {
+            let program_with_defines = pio_proc::pio_asm!(
+                // "set pindirs, 1",
+                // ".wrap_target",
+
+                // "set pins, 0 [10]",
+                // "set pins, 1 [10]",
+                // ".wrap",
+                ".side_set 2",
+                "                    ;        /--- LRCLK",
+                "                    ;        |/-- BCLK",
+                ".wrap_target        ;        ||",
+                "bitloop1:           ;        ||",
+                "    in pins, 1       side 0b10",
+                "    jmp x-- bitloop1  side 0b11",
+                "    in pins, 1       side 0b00",
+               // "    set x, 14         side 0b01",
+               "    set x, 30         side 0b01",
+                "",
+                "bitloop0:",
+                "    in pins, 1       side 0b00",
+                "    jmp x-- bitloop0  side 0b01",
+                "    in pins, 1       side 0b10",
+                "public entry_point:",
+                // "    set x, 14         side 0b11",
+                "    set x, 30         side 0b11",
+                ".wrap"
+                options(max_program_size = 32) // Optional, defaults to 32
+            );
+            program_with_defines.program
+        };
+
+        let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio0>();
+        let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio0>();
+        let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
+
         let _pin9 = pins.gpio9.into_mode::<bsp::hal::gpio::FunctionPio0>();
         let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio0>();
         let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
 
         // Initialize and start PIO
-        let (mut pio, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
-        let installed = pio.install(&program).unwrap();
+        let (mut pio, sm0, sm1, _, _) = pac.PIO0.split(&mut pac.RESETS);
+        let installed_writer = pio.install(&program).unwrap();
+        let installed_reader = pio.install(&program_input).unwrap();
 
         let (int, frac) = {
             let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
@@ -107,17 +160,36 @@ fn main() -> ! {
             (int, frac)
         };
 
-        let (mut sm, _, tx) = bsp::hal::pio::PIOBuilder::from_program(installed)
+        let (mut sm, _, tx) = bsp::hal::pio::PIOBuilder::from_program(installed_writer)
             .out_pins(9, 3) // I2S data pin
             .side_set_pin_base(10) // I2S Clock Pin
             .autopull(true)
             .clock_divisor_fixed_point(int, frac)
             .build(sm0);
+
         sm.set_pindirs(
             [
                 (9, bsp::hal::pio::PinDir::Output),
                 (10, bsp::hal::pio::PinDir::Output),
                 (11, bsp::hal::pio::PinDir::Output),
+            ]
+            .into_iter(),
+        );
+        sm.start();
+
+        // Receive
+        let (mut sm, rx, _) = bsp::hal::pio::PIOBuilder::from_program(installed_reader)
+            .out_pins(6, 3) // I2S data pin
+            .side_set_pin_base(7) // I2S Clock Pin
+            .autopush(true)
+            .clock_divisor_fixed_point(int, frac)
+            .build(sm1);
+
+        sm.set_pindirs(
+            [
+                (6, bsp::hal::pio::PinDir::Input),
+                (7, bsp::hal::pio::PinDir::Output),
+                (8, bsp::hal::pio::PinDir::Output),
             ]
             .into_iter(),
         );
@@ -137,7 +209,7 @@ fn main() -> ! {
         };
 
         // 256fs clock
-        let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio1>();
+        let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
 
         let (mut pio, sm0, _, _, _) = pac.PIO1.split(&mut pac.RESETS);
         let installed = pio.install(&program).unwrap();
@@ -154,13 +226,13 @@ fn main() -> ! {
             // .out_pins(8, 1) // High Frequency I2S Sys Clock
             //.side_set_pin_base(10) // I2S Clock Pin
             //.autopull(true)
-            .set_pins(8, 1)
+            .set_pins(5, 1)
             .clock_divisor_fixed_point(int, frac)
             .build(sm0);
-        sm.set_pindirs([(8, bsp::hal::pio::PinDir::Output)].into_iter());
+        sm.set_pindirs([(5, bsp::hal::pio::PinDir::Output)].into_iter());
         sm.start();
 
-        tx
+        (tx, rx)
     };
 
     // This is the correct pin on the Raspberry Pico board. On other boards, even if they have an
@@ -170,7 +242,6 @@ fn main() -> ! {
     // LED to one of the GPIO pins, and reference that pin here.
     //let mut led_pin = pins.gpio10.into_push_pull_output();
     let mut led_pin = pins.led.into_push_pull_output();
-    let mut flip = false;
 
     let mut time = 0.0f32;
     let mut buf = [0u32; 400 * 2];
@@ -201,13 +272,48 @@ fn main() -> ! {
 
     let mut bufindex = 0;
     time = 0.0;
+
+    let mut write = |value| {
+        while !tx.write(value) {
+            cortex_m::asm::nop();
+        }
+    };
+
+    let mut read = || loop {
+        let value = rx.read();
+        if let Some(value) = value {
+            return value;
+        }
+        cortex_m::asm::nop();
+    };
+
+    let mut led_flash = toggle(44100);
+
+    // push 0's into tx for the first sample so we
+    // have one in the buffer
+    write(0u32);
+    write(0u32);
     loop {
         // // Toggle LED
-        flip = !flip;
-        match flip {
-            true => led_pin.set_high().unwrap(),
-            false => led_pin.set_low().unwrap(),
+        match led_flash() {
+            Some(true) => led_pin.set_high().unwrap(),
+            Some(false) => led_pin.set_low().unwrap(),
+            None => {}
         }
+
+        write(read());
+        write(read());
+        continue;
+
+        _ = read();
+        write(buf[bufindex]);
+        bufindex += 2;
+        if bufindex >= buf.len() {
+            bufindex = 0;
+        }
+        continue;
+
+        // rx tx
 
         // 440.0hz wave at 44100.0hz sample rate
         // let y = libm::sinf(time * 440.0 * 2.0 * PI);

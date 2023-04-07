@@ -1,3 +1,19 @@
+# Prototype Pinout
+
+| RP2040 Pin | Pico Pin | PCM 1808 Pin | Function |
+|------------|----------|--------------|----------|
+| 39          | 39        |             | VSYS +5v      |
+| 36        | 36        |  3.3v           | 3v3(OUT)      |
+| 33      | 38        |  FMT,MD0,MD1,GND           | GND      |
+| 15        | 15        |             | GP11,LRCK      |
+| 14        | 14        |             | GP10,BCK      |
+| 12        | 12        |             | GP9,DIN      |
+| 11        |         |         LRC    | GP8,LRCK      |
+| 10        |         |         BCK    | GP7,BCK      |
+| 9        |         |         OUT    | GP6,OUT      |
+| 7        |         |         SCK    | GP5,SCK      |
+
+
 # Project template for rp2040-hal
 
 This template is intended as a starting point for developing your own firmware based on the rp2040-hal.
