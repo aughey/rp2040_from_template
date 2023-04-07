@@ -184,7 +184,7 @@ fn main() -> ! {
             let y = y * 0.1;
             let y = (y * 2147483648.0) as i32;
             // Convert i to u without changing the bit pattern
-            let y = unsafe { core::mem::transmute::<i32, u32>(y) };
+            let y = y as u32;
             y
         };
         let y = compute_value(freq);
