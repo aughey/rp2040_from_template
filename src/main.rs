@@ -10,6 +10,7 @@ use bsp::{entry, hal::prelude::_rphal_pio_PIOExt};
 use defmt::*;
 use defmt_rtt as _;
 use embedded_hal::digital::v2::OutputPin;
+use micromath::F32Ext;
 use panic_probe as _;
 
 // Provide an alias for our BSP so we can switch targets quickly.
@@ -91,9 +92,6 @@ fn main() -> ! {
             program_with_defines.program
         };
 
-        // 256fs clock
-        let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
-
         let _pin9 = pins.gpio9.into_mode::<bsp::hal::gpio::FunctionPio0>();
         let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio0>();
         let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
@@ -131,38 +129,36 @@ fn main() -> ! {
         let program = {
             let program_with_defines = pio_proc::pio_asm!(
                 ".wrap_target          ",
-                "    out pins, 1       ",
-                "    out pins, 0       ",
+                "    set pins, 1       ",
+                "    set pins, 0       ",
                 ".wrap"
                 options(max_program_size = 32) // Optional, defaults to 32
             );
             program_with_defines.program
         };
 
+        // 256fs clock
+        let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio1>();
+
+        let (mut pio, sm0, _, _, _) = pac.PIO1.split(&mut pac.RESETS);
         let installed = pio.install(&program).unwrap();
 
         let (int, frac) = {
             let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
-            let fsclock: f64 = 256.0 * 44100.0;
+            let fsclock: f64 = 256.0 * 44100.0 * 2.0;
             let int: u16 = (system_clock / fsclock) as u16;
             let frac: u8 = ((system_clock / fsclock - int as f64) * 256.0) as u8;
             (int, frac)
         };
 
-        let (mut sm, _, tx) = bsp::hal::pio::PIOBuilder::from_program(installed)
-            .out_pins(9, 3) // I2S data pin
-            .side_set_pin_base(10) // I2S Clock Pin
-            .autopull(true)
+        let (mut sm, _, _) = bsp::hal::pio::PIOBuilder::from_program(installed)
+            // .out_pins(8, 1) // High Frequency I2S Sys Clock
+            //.side_set_pin_base(10) // I2S Clock Pin
+            //.autopull(true)
+            .set_pins(8, 1)
             .clock_divisor_fixed_point(int, frac)
-            .build(sm1);
-        sm.set_pindirs(
-            [
-                (9, bsp::hal::pio::PinDir::Output),
-                (10, bsp::hal::pio::PinDir::Output),
-                (11, bsp::hal::pio::PinDir::Output),
-            ]
-            .into_iter(),
-        );
+            .build(sm0);
+        sm.set_pindirs([(8, bsp::hal::pio::PinDir::Output)].into_iter());
         sm.start();
 
         tx
@@ -178,25 +174,32 @@ fn main() -> ! {
     let mut flip = false;
 
     let mut time = 0.0f32;
-    let mut buf = [0u32; 400*2];
+    let mut buf = [0u32; 400 * 2];
     let freq = 441.0f32;
     // Generate the 441hz sine wave in this buf
-    let len = buf.len()/2;
+    let len = buf.len() / 2;
     for i in 0..len {
-        let y = libm::sinf(time * freq * 2.0 * PI);
-        let y = y * 0.1;
-        let y = (y * 2147483648.0) as i32;
+        let compute_value = |f| {
+            let y = libm::sinf(time * f * 2.0 * PI);
+            let y = y * 0.1;
+            let y = (y * 2147483648.0) as i32;
+            // Convert i to u without changing the bit pattern
+            let y = unsafe { core::mem::transmute::<i32, u32>(y) };
+            y
+        };
+        let y = compute_value(freq);
+        buf[i * 2 + 0] = y;
+        let y = compute_value(freq * 2.0);
+        buf[i * 2 + 1] = y;
         time += 1.0 / 44100.0;
         if time > PI * 2.0 {
             time -= PI * 2.0;
         }
-        // Convert i to u without changing the bit pattern
-        let y = unsafe { core::mem::transmute::<i32, u32>(y) };
+
         //let y = y as u32;
         //let y = y << 16 | y;
-        buf[i*2+0] = y;
-        buf[i*2+1] = y;
     }
+    led_pin.set_high().unwrap();
 
     let mut bufindex = 0;
     loop {
@@ -219,15 +222,27 @@ fn main() -> ! {
         // let y = unsafe { core::mem::transmute::<i32, u32>(y) };
         // let y = y << 16 | y;
         // let y = 0xff00_ff00;
+
         let y = buf[bufindex];
         bufindex += 1;
         if bufindex >= buf.len() {
             bufindex = 0;
         }
+        // let y = (time * 440.0 * 2.0 * PI).sin();
+        // let y = y * 0.1;
+        // let y = (y * 2147483648.0) as i32;
+        // // Convert i to u without changing the bit pattern
+        // let y = unsafe { core::mem::transmute::<i32, u32>(y) };
+
+        // while !tx.write(y) {
+        //     cortex_m::asm::nop();
+        // }
 
         while !tx.write(y) {
             cortex_m::asm::nop();
         }
+
+        time += 1.0 / 44100.0;
 
         continue;
 
