@@ -27,6 +27,10 @@ fn main() -> ! {
 
     // push 0's into tx for the first sample so we
     // have one in the buffer
+    _ = read();
+    _ = read();
+    write(0u32);
+    write(0u32);
     write(0u32);
     write(0u32);
     loop {
@@ -46,10 +50,36 @@ fn main() -> ! {
         //     bufindex = 0;
         // }
 
-        let l = read() * 4;
+        let valuesl = read();
+        write(0);
+        let valuesr = read();
+
+        let sum = valuesl[0] as i64
+            + valuesl[1] as i64
+            + valuesl[2] as i64
+            + valuesr[0] as i64
+            + valuesr[1] as i64
+            + valuesr[2] as i64;
+        //  let sum = sum + valuesr[0] as i64; // + valuesr[1] as i64 + valuesr[2] as i64;
+
+        const MAX: i64 = 2147483647;
+        let sum = if sum > MAX {
+            MAX
+        } else if sum < -MAX {
+            -MAX
+        } else {
+            sum
+        };
+
+        let l = sum as u32;
+        //  write(l);
         write(l);
-        let _r = read() * 4;
-        write(l);
+
+        // let sum = sum + values.iter().fold(sum, |acc, x| acc + (*x as i64));
+
+        // // clamp sum to +/- 2^31-1
+
+        //  write(l);
         // let value = sinewave();
         // write(value);
         // write(value);
