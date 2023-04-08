@@ -13,6 +13,8 @@
 | 9        |         |         OUT    | GP6,OUT      |
 | 7        |         |         SCK    | GP5,SCK      |
 
+# i2s timing diagram
+![i2s](i2s.png)
 
 # Project template for rp2040-hal
 

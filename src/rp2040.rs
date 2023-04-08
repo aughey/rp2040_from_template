@@ -77,21 +77,22 @@ pub fn initialize_pio_state_machines(
                 let program_output = {
                     let program_with_defines = pio_proc::pio_asm!(
                         ".side_set 2",
-                        "                    ;        /--- LRCLK",
-                        "                    ;        |/-- BCLK",
-                        ".wrap_target        ;        ||",
-                        "bitloop1:           ;        ||",
-                        "    out pins, 1       side 0b10 [3]",
-                        "    jmp x-- bitloop1  side 0b11 [3]",
-                        "    out pins, 1       side 0b00 [3]",
-                       "    set x, 30          side 0b01 [3]",
-                        "",
+                        "                    ;       /--- LRCLK",
+                        "                    ;       |/-- BCLK",
+                        "public entry_point: ;       ||",
+                        "    irq wait 0       side 0b10 [3]", // wait to be signaled by the system clock
+                        "    set x, 30        side 0b01 [3]",
+                        ".wrap_target        ;        ",
                         "bitloop0:",
-                        "    out pins, 1       side 0b00 [3]",
-                        "    jmp x-- bitloop0  side 0b01 [3]",
-                        "    out pins, 1       side 0b10 [3]",
-                        "public entry_point:",
-                        "    set x, 30         side 0b11 [3]",
+                        "    out pins, 1      side 0b00 [3]", // 31 times
+                        "    jmp x-- bitloop0 side 0b01 [3]",
+                        "    out pins, 1      side 0b10 [3]", // 32nd time
+                        "    set x, 30        side 0b11 [3]",
+                        "bitloop1:           ;        ",
+                        "    out pins, 1      side 0b10 [3]", // 31 times
+                        "    jmp x-- bitloop1 side 0b11 [3]",
+                        "    out pins, 1      side 0b00 [3]", // 32nd time
+                        "    set x, 30        side 0b01 [3]",
                         ".wrap"
                         options(max_program_size = 32) // Optional, defaults to 32
                     );
@@ -143,23 +144,26 @@ pub fn initialize_pio_state_machines(
                     let program_input = {
                         let program_with_defines = pio_proc::pio_asm!(
                             ".side_set 2",
-                            "                    ;        /--- LRCLK",
-                            "                    ;        |/-- BCLK",
-                            "public entry_point:",
-                            "    irq wait 0       side 0b00 [3]", // wait to be signaled by the system clock
-                            ".wrap_target        ;        ||",
-                            "    set x, 30        side 0b11 [3]",
-                            "bitloop1:           ;        ||",
-                            // A delay of 4 throughout because we run on the same clock as the system clock
-                            "    in pins, 1       side 0b10 [3]",
-                            "    jmp x-- bitloop1 side 0b11 [3]",
-                            "    in pins, 1       side 0b00 [3]",
-                           "    set x, 30         side 0b01 [3]",
-                            "",
+                            "                    ;       /--- LRCLK",
+                            "                    ;       |/-- BCLK",
+                            "public entry_point: ;       ||",
+                            "    irq wait 0       side 0b10 [3]", // wait to be signaled by the system clock
+                            "    set x, 29        side 0b01 [3]",
+                            ".wrap_target        ;        ",
                             "bitloop0:",
-                            "    in pins, 1       side 0b00 [3]",
-                            "    jmp x-- bitloop0 side 0b01 [3]",
-                            "    in pins, 1       side 0b10 [3]",
+                            "    in pins, 1       side 0b01 [3]", // 29 times
+                            "    jmp x-- bitloop0 side 0b00 [3]",
+                            "    in pins, 1       side 0b01 [3]", // 30th time
+                            "    nop              side 0b10 [3]", // 31st time
+                            "    in pins, 1       side 0b11 [3]", // 32nd time
+                            "    set x, 29        side 0b10 [3]",
+                            "bitloop1:           ;        ",
+                            "    in pins, 1       side 0b11 [3]", // 29 times
+                            "    jmp x-- bitloop1 side 0b10 [3]",
+                            "    in pins, 1       side 0b11 [3]", // 30th time
+                            "    nop              side 0b00 [3]", // 31st time
+                            "    in pins, 1       side 0b01 [3]", // 32nd time
+                            "    set x, 29        side 0b00 [3]",
                             ".wrap"
                             options(max_program_size = 32) // Optional, defaults to 32
                         );
@@ -222,16 +226,16 @@ pub fn initialize_pio_state_machines(
                             break value;
                         }
                     };
-                    // let value1 = loop {
-                    //     if let Some(value) = rx1.read() {
-                    //         break value;
-                    //     }
-                    // };
-                    // let value2 = loop {
-                    //     if let Some(value) = rx2.read() {
-                    //         break value;
-                    //     }
-                    // };
+                    let value1 = loop {
+                        if let Some(value) = rx1.read() {
+                            break value;
+                        }
+                    };
+                    let value2 = loop {
+                        if let Some(value) = rx2.read() {
+                            break value;
+                        }
+                    };
                     [value0, 0, 0]
                 };
 
