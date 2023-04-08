@@ -95,86 +95,27 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
                 "                    ;        |/-- BCLK",
                 ".wrap_target        ;        ||",
                 "bitloop1:           ;        ||",
-                "    in pins, 1       side 0b10",
-                "    jmp x-- bitloop1  side 0b11",
-                "    in pins, 1       side 0b00",
-               // "    set x, 14         side 0b01",
-               "    set x, 30         side 0b01",
+                // A delay of 4 throughout because we run on the same clock as the system clock
+                "    in pins, 1       side 0b10 [4]",
+                "    jmp x-- bitloop1 side 0b11 [4]",
+                "    in pins, 1       side 0b00 [4]",
+               "    set x, 30         side 0b01 [4]",
                 "",
                 "bitloop0:",
-                "    in pins, 1       side 0b00",
-                "    jmp x-- bitloop0  side 0b01",
-                "    in pins, 1       side 0b10",
+                "    in pins, 1       side 0b00 [4]",
+                "    jmp x-- bitloop0 side 0b01 [4]",
+                "    in pins, 1       side 0b10 [4]",
                 "public entry_point:",
-                // "    set x, 14         side 0b11",
-                "    set x, 30         side 0b11",
+                "    set x, 30        side 0b11 [4]",
                 ".wrap"
                 options(max_program_size = 32) // Optional, defaults to 32
             );
             program_with_defines.program
         };
 
-        let _pin9 = pins.gpio9.into_mode::<bsp::hal::gpio::FunctionPio0>();
-        let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio0>();
-        let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
-
-        // Initialize and start PIO
-        let (mut pio, sm0, sm1, _, _) = pac.PIO0.split(&mut pac.RESETS);
-        let installed_writer = pio.install(&program_output).unwrap();
-        let installed_reader = pio.install(&program_input).unwrap();
-
-        let (int, frac) = {
-            let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
-            let bit_freq: f64 = 44100.0 * 32.0 * 2.0 * 2.0;
-            let int: u16 = (system_clock / bit_freq) as u16;
-            let frac: u8 = ((system_clock / bit_freq - int as f64) * 256.0) as u8;
-            (int, frac)
-        };
-
-        let (mut sm, _, tx) = bsp::hal::pio::PIOBuilder::from_program(installed_writer)
-            .out_pins(9, 3) // I2S data pin
-            .side_set_pin_base(10) // I2S Clock Pin
-            .autopull(true)
-            .pull_threshold(32)
-            .clock_divisor_fixed_point(int, frac)
-            .build(sm0);
-
-        sm.set_pindirs(
-            [
-                (9, bsp::hal::pio::PinDir::Output),
-                (10, bsp::hal::pio::PinDir::Output),
-                (11, bsp::hal::pio::PinDir::Output),
-            ]
-            .into_iter(),
-        );
-        sm.start();
-
-        // Receive
-        let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio0>();
-        let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio0>();
-        let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
-
-        let (mut sm, rx, _) = bsp::hal::pio::PIOBuilder::from_program(installed_reader)
-            .in_pin_base(6) // I2S data pin
-            .side_set_pin_base(7) // I2S Clock Pin
-            .autopush(true)
-            .push_threshold(32)
-            .clock_divisor_fixed_point(int, frac)
-            .build(sm1);
-
-        sm.set_pindirs(
-            [
-                (6, bsp::hal::pio::PinDir::Input),
-                (7, bsp::hal::pio::PinDir::Output),
-                (8, bsp::hal::pio::PinDir::Output),
-            ]
-            .into_iter(),
-        );
-        sm.start();
-
         // Load up a new state machine to run the 256fs clock
         // Define some simple PIO program.
-        let program = {
+        let program_system_clock = {
             let program_with_defines = pio_proc::pio_asm!(
                 ".wrap_target          ",
                 "    set pins, 1       ",
@@ -185,29 +126,106 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
             program_with_defines.program
         };
 
-        // 256fs clock
-        let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
+        // PIO0
+        let tx = {
+            // Initialize and start PIO
+            let (mut pio, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
 
-        let (mut pio, sm0, _, _, _) = pac.PIO1.split(&mut pac.RESETS);
-        let installed = pio.install(&program).unwrap();
+            let _pin9 = pins.gpio9.into_mode::<bsp::hal::gpio::FunctionPio0>();
+            let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio0>();
+            let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
 
-        let (int, frac) = {
-            let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
-            let fsclock: f64 = 256.0 * 44100.0 * 2.0;
-            let int: u16 = (system_clock / fsclock) as u16;
-            let frac: u8 = ((system_clock / fsclock - int as f64) * 256.0) as u8;
-            (int, frac)
+            let installed_writer = pio.install(&program_output).unwrap();
+
+            let (int, frac) = {
+                let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
+                let bit_freq: f64 = 44100.0 * 32.0 * 2.0 * 2.0;
+                let int: u16 = (system_clock / bit_freq) as u16;
+                let frac: u8 = ((system_clock / bit_freq - int as f64) * 256.0) as u8;
+                (int, frac)
+            };
+
+            let (mut sm, _, tx) = bsp::hal::pio::PIOBuilder::from_program(installed_writer)
+                .out_pins(9, 3) // I2S data pin
+                .side_set_pin_base(10) // I2S Clock Pin
+                .autopull(true)
+                .pull_threshold(32)
+                .clock_divisor_fixed_point(int, frac)
+                .build(sm0);
+
+            sm.set_pindirs(
+                [
+                    (9, bsp::hal::pio::PinDir::Output),
+                    (10, bsp::hal::pio::PinDir::Output),
+                    (11, bsp::hal::pio::PinDir::Output),
+                ]
+                .into_iter(),
+            );
+            sm.start();
+            tx
         };
 
-        let (mut sm, _, _) = bsp::hal::pio::PIOBuilder::from_program(installed)
-            // .out_pins(8, 1) // High Frequency I2S Sys Clock
-            //.side_set_pin_base(10) // I2S Clock Pin
-            //.autopull(true)
-            .set_pins(5, 1)
-            .clock_divisor_fixed_point(int, frac)
-            .build(sm0);
-        sm.set_pindirs([(5, bsp::hal::pio::PinDir::Output)].into_iter());
-        sm.start();
+        // PIO1
+        let rx = {
+            let (mut pio, sm0, sm1, _, _) = pac.PIO1.split(&mut pac.RESETS);
+            // 256fs clock
+            // Both state machines share the same clock because we want the
+            // system clock and the i2s master (reader) to be synchronized
+            let (int, frac) = {
+                let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
+
+                let installed = pio.install(&program_system_clock).unwrap();
+
+                let (int, frac) = {
+                    let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
+                    let fsclock: f64 = 256.0 * 44100.0 * 2.0;
+                    let int: u16 = (system_clock / fsclock) as u16;
+                    let frac: u8 = ((system_clock / fsclock - int as f64) * 256.0) as u8;
+                    (int, frac)
+                };
+
+                let (mut sm, _, _) = bsp::hal::pio::PIOBuilder::from_program(installed)
+                    // .out_pins(8, 1) // High Frequency I2S Sys Clock
+                    //.side_set_pin_base(10) // I2S Clock Pin
+                    //.autopull(true)
+                    .set_pins(5, 1)
+                    .clock_divisor_fixed_point(int, frac)
+                    .build(sm0);
+                sm.set_pindirs([(5, bsp::hal::pio::PinDir::Output)].into_iter());
+                sm.start();
+
+                (int, frac)
+            };
+
+            // Receive
+            let rx = {
+                let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio0>();
+                let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio0>();
+                let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
+
+                let installed_reader = pio.install(&program_input).unwrap();
+
+                let (mut sm, rx, _) = bsp::hal::pio::PIOBuilder::from_program(installed_reader)
+                    .in_pin_base(6) // I2S data pin
+                    .side_set_pin_base(7) // I2S Clock Pin
+                    .autopush(true)
+                    .push_threshold(32)
+                    .clock_divisor_fixed_point(int, frac)
+                    .build(sm1);
+
+                sm.set_pindirs(
+                    [
+                        (6, bsp::hal::pio::PinDir::Input),
+                        (7, bsp::hal::pio::PinDir::Output),
+                        (8, bsp::hal::pio::PinDir::Output),
+                    ]
+                    .into_iter(),
+                );
+                sm.start();
+                rx
+            };
+            rx
+        };
 
         (tx, rx)
     };

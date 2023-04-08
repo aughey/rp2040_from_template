@@ -20,7 +20,6 @@ fn main() -> ! {
     for value in buf.iter_mut() {
         *value = sinewave();
     }
-    let mut bufindex = 0usize;
 
     led(true);
 
@@ -49,7 +48,7 @@ fn main() -> ! {
 
         let l = read() * 4;
         write(l);
-        let r = read() * 4;
+        let _r = read() * 4;
         write(l);
         // let value = sinewave();
         // write(value);
