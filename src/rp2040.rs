@@ -49,82 +49,9 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
     // Load and generate the tx,rx channels to the FIFOs
     let (mut tx, mut rx) = {
         // Define some simple PIO program.
-        let program_output = {
-            let program_with_defines = pio_proc::pio_asm!(
-                // "set pindirs, 1",
-                // ".wrap_target",
-
-                // "set pins, 0 [10]",
-                // "set pins, 1 [10]",
-                // ".wrap",
-                ".side_set 2",
-                "                    ;        /--- LRCLK",
-                "                    ;        |/-- BCLK",
-                ".wrap_target        ;        ||",
-                "bitloop1:           ;        ||",
-                "    out pins, 1       side 0b10",
-                "    jmp x-- bitloop1  side 0b11",
-                "    out pins, 1       side 0b00",
-               // "    set x, 14         side 0b01",
-               "    set x, 30         side 0b01",
-                "",
-                "bitloop0:",
-                "    out pins, 1       side 0b00",
-                "    jmp x-- bitloop0  side 0b01",
-                "    out pins, 1       side 0b10",
-                "public entry_point:",
-                // "    set x, 14         side 0b11",
-                "    set x, 30         side 0b11",
-                ".wrap"
-                options(max_program_size = 32) // Optional, defaults to 32
-            );
-            program_with_defines.program
-        };
-
-        // Define some simple PIO program.
-        let program_input = {
-            let program_with_defines = pio_proc::pio_asm!(
-                // "set pindirs, 1",
-                // ".wrap_target",
-
-                // "set pins, 0 [10]",
-                // "set pins, 1 [10]",
-                // ".wrap",
-                ".side_set 2",
-                "                    ;        /--- LRCLK",
-                "                    ;        |/-- BCLK",
-                ".wrap_target        ;        ||",
-                "bitloop1:           ;        ||",
-                // A delay of 4 throughout because we run on the same clock as the system clock
-                "    in pins, 1       side 0b10 [4]",
-                "    jmp x-- bitloop1 side 0b11 [4]",
-                "    in pins, 1       side 0b00 [4]",
-               "    set x, 30         side 0b01 [4]",
-                "",
-                "bitloop0:",
-                "    in pins, 1       side 0b00 [4]",
-                "    jmp x-- bitloop0 side 0b01 [4]",
-                "    in pins, 1       side 0b10 [4]",
-                "public entry_point:",
-                "    set x, 30        side 0b11 [4]",
-                ".wrap"
-                options(max_program_size = 32) // Optional, defaults to 32
-            );
-            program_with_defines.program
-        };
 
         // Load up a new state machine to run the 256fs clock
         // Define some simple PIO program.
-        let program_system_clock = {
-            let program_with_defines = pio_proc::pio_asm!(
-                ".wrap_target          ",
-                "    set pins, 1       ",
-                "    set pins, 0       ",
-                ".wrap"
-                options(max_program_size = 32) // Optional, defaults to 32
-            );
-            program_with_defines.program
-        };
 
         // PIO0
         let tx = {
@@ -135,7 +62,40 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
             let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio0>();
             let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
 
-            let installed_writer = pio.install(&program_output).unwrap();
+            let installed_writer = {
+                let program_output = {
+                    let program_with_defines = pio_proc::pio_asm!(
+                        // "set pindirs, 1",
+                        // ".wrap_target",
+
+                        // "set pins, 0 [10]",
+                        // "set pins, 1 [10]",
+                        // ".wrap",
+                        ".side_set 2",
+                        "                    ;        /--- LRCLK",
+                        "                    ;        |/-- BCLK",
+                        ".wrap_target        ;        ||",
+                        "bitloop1:           ;        ||",
+                        "    out pins, 1       side 0b10",
+                        "    jmp x-- bitloop1  side 0b11",
+                        "    out pins, 1       side 0b00",
+                       // "    set x, 14         side 0b01",
+                       "    set x, 30         side 0b01",
+                        "",
+                        "bitloop0:",
+                        "    out pins, 1       side 0b00",
+                        "    jmp x-- bitloop0  side 0b01",
+                        "    out pins, 1       side 0b10",
+                        "public entry_point:",
+                        // "    set x, 14         side 0b11",
+                        "    set x, 30         side 0b11",
+                        ".wrap"
+                        options(max_program_size = 32) // Optional, defaults to 32
+                    );
+                    program_with_defines.program
+                };
+                pio.install(&program_output).unwrap()
+            };
 
             let (int, frac) = {
                 let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
@@ -174,7 +134,19 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
             let (int, frac) = {
                 let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
 
-                let installed = pio.install(&program_system_clock).unwrap();
+                let installed_system_clock = {
+                    let program_system_clock = {
+                        let program_with_defines = pio_proc::pio_asm!(
+                            ".wrap_target          ",
+                            "    set pins, 1       ",
+                            "    set pins, 0       ",
+                            ".wrap"
+                            options(max_program_size = 32) // Optional, defaults to 32
+                        );
+                        program_with_defines.program
+                    };
+                    pio.install(&program_system_clock).unwrap()
+                };
 
                 let (int, frac) = {
                     let system_clock: f64 = clocks.system_clock.freq().to_Hz() as f64;
@@ -184,13 +156,14 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
                     (int, frac)
                 };
 
-                let (mut sm, _, _) = bsp::hal::pio::PIOBuilder::from_program(installed)
-                    // .out_pins(8, 1) // High Frequency I2S Sys Clock
-                    //.side_set_pin_base(10) // I2S Clock Pin
-                    //.autopull(true)
-                    .set_pins(5, 1)
-                    .clock_divisor_fixed_point(int, frac)
-                    .build(sm0);
+                let (mut sm, _, _) =
+                    bsp::hal::pio::PIOBuilder::from_program(installed_system_clock)
+                        // .out_pins(8, 1) // High Frequency I2S Sys Clock
+                        //.side_set_pin_base(10) // I2S Clock Pin
+                        //.autopull(true)
+                        .set_pins(5, 1)
+                        .clock_divisor_fixed_point(int, frac)
+                        .build(sm0);
                 sm.set_pindirs([(5, bsp::hal::pio::PinDir::Output)].into_iter());
                 sm.start();
 
@@ -203,7 +176,35 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
                 let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio0>();
                 let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
 
-                let installed_reader = pio.install(&program_input).unwrap();
+                let installed_reader = {
+                    // Define some simple PIO program.
+                    let program_input = {
+                        let program_with_defines = pio_proc::pio_asm!(
+                            ".side_set 2",
+                            "                    ;        /--- LRCLK",
+                            "                    ;        |/-- BCLK",
+                            ".wrap_target        ;        ||",
+                            "bitloop1:           ;        ||",
+                            // A delay of 4 throughout because we run on the same clock as the system clock
+                            "    in pins, 1       side 0b10 [4]",
+                            "    jmp x-- bitloop1 side 0b11 [4]",
+                            "    in pins, 1       side 0b00 [4]",
+                           "    set x, 30         side 0b01 [4]",
+                            "",
+                            "bitloop0:",
+                            "    in pins, 1       side 0b00 [4]",
+                            "    jmp x-- bitloop0 side 0b01 [4]",
+                            "    in pins, 1       side 0b10 [4]",
+                            "public entry_point:",
+                            "    set x, 30        side 0b11 [4]",
+                            ".wrap"
+                            options(max_program_size = 32) // Optional, defaults to 32
+                        );
+                        program_with_defines.program
+                    };
+
+                    pio.install(&program_input).unwrap()
+                };
 
                 let (mut sm, rx, _) = bsp::hal::pio::PIOBuilder::from_program(installed_reader)
                     .in_pin_base(6) // I2S data pin
