@@ -65,12 +65,6 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
             let installed_writer = {
                 let program_output = {
                     let program_with_defines = pio_proc::pio_asm!(
-                        // "set pindirs, 1",
-                        // ".wrap_target",
-
-                        // "set pins, 0 [10]",
-                        // "set pins, 1 [10]",
-                        // ".wrap",
                         ".side_set 2",
                         "                    ;        /--- LRCLK",
                         "                    ;        |/-- BCLK",
@@ -79,7 +73,6 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
                         "    out pins, 1       side 0b10",
                         "    jmp x-- bitloop1  side 0b11",
                         "    out pins, 1       side 0b00",
-                       // "    set x, 14         side 0b01",
                        "    set x, 30         side 0b01",
                         "",
                         "bitloop0:",
@@ -87,7 +80,6 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
                         "    jmp x-- bitloop0  side 0b01",
                         "    out pins, 1       side 0b10",
                         "public entry_point:",
-                        // "    set x, 14         side 0b11",
                         "    set x, 30         side 0b11",
                         ".wrap"
                         options(max_program_size = 32) // Optional, defaults to 32
@@ -132,8 +124,6 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
             // Both state machines share the same clock because we want the
             // system clock and the i2s master (reader) to be synchronized
             let (int, frac) = {
-                let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
-
                 let installed_system_clock = {
                     let program_system_clock = {
                         let program_with_defines = pio_proc::pio_asm!(
@@ -156,6 +146,8 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
                     (int, frac)
                 };
 
+                let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
+
                 let (mut sm, _, _) =
                     bsp::hal::pio::PIOBuilder::from_program(installed_system_clock)
                         // .out_pins(8, 1) // High Frequency I2S Sys Clock
@@ -172,9 +164,9 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
 
             // Receive
             let rx = {
-                let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio0>();
-                let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio0>();
-                let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
+                let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio1>();
 
                 let installed_reader = {
                     // Define some simple PIO program.
