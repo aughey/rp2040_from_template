@@ -1,21 +1,21 @@
-pub fn initialize_pio_state_machines(
-) -> (impl FnMut() -> u32, impl FnMut(u32), impl FnMut(bool)) {
-    use bsp::hal::prelude::_rphal_pio_PIOExt;
-    use defmt_rtt as _;
-    use embedded_hal::digital::v2::OutputPin;
-    use panic_probe as _;
+use bsp::hal::prelude::_rphal_pio_PIOExt;
+use defmt_rtt as _;
+use embedded_hal::digital::v2::OutputPin;
+use panic_probe as _;
 
-    // Provide an alias for our BSP so we can switch targets quickly.
-    // Uncomment the BSP you included in Cargo.toml, the rest of the code does not need to change.
-    use rp_pico as bsp;
-    // use sparkfun_pro_micro_rp2040 as bsp;
+// Provide an alias for our BSP so we can switch targets quickly.
+// Uncomment the BSP you included in Cargo.toml, the rest of the code does not need to change.
+use rp_pico as bsp;
+// use sparkfun_pro_micro_rp2040 as bsp;
 
-    use bsp::hal::{
-        clocks::{init_clocks_and_plls, Clock},
-        pac,
-        sio::Sio,
-        watchdog::Watchdog,
-    };
+use bsp::hal::{
+    clocks::{init_clocks_and_plls, Clock},
+    pac,
+    sio::Sio,
+    watchdog::Watchdog,
+};
+
+pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32), impl FnMut(bool)) {
     let mut pac = pac::Peripherals::take().unwrap();
     //let core = pac::CorePeripherals::take().unwrap();
     let mut watchdog = Watchdog::new(pac.WATCHDOG);
@@ -46,9 +46,10 @@ pub fn initialize_pio_state_machines(
         &mut pac.RESETS,
     );
 
+    // Load and generate the tx,rx channels to the FIFOs
     let (mut tx, mut rx) = {
         // Define some simple PIO program.
-        let program = {
+        let program_output = {
             let program_with_defines = pio_proc::pio_asm!(
                 // "set pindirs, 1",
                 // ".wrap_target",
@@ -123,7 +124,7 @@ pub fn initialize_pio_state_machines(
 
         // Initialize and start PIO
         let (mut pio, sm0, sm1, _, _) = pac.PIO0.split(&mut pac.RESETS);
-        let installed_writer = pio.install(&program).unwrap();
+        let installed_writer = pio.install(&program_output).unwrap();
         let installed_reader = pio.install(&program_input).unwrap();
 
         let (int, frac) = {

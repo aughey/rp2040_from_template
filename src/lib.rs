@@ -51,3 +51,13 @@ pub fn sine_wave(_freq: f32, sample_rate: usize) -> impl Iterator<Item = u32> {
     // repeat the buffer endlessly
     buf.into_iter().cycle()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+}

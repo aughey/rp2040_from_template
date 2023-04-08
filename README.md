@@ -73,7 +73,7 @@ If you aren't using a debugger (or want to use cargo-embed/probe-rs-debugger), c
 rustup target install thumbv6m-none-eabi
 cargo install flip-link
 # This is our suggested default 'runner'
-cargo install probe-run
+# cargo install probe-run
 # If you want to use elf2uf2-rs instead of probe-run, instead do...
 cargo install elf2uf2-rs --locked
 ```
