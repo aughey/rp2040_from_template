@@ -114,10 +114,6 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
             program_with_defines.program
         };
 
-        let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio0>();
-        let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio0>();
-        let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
-
         let _pin9 = pins.gpio9.into_mode::<bsp::hal::gpio::FunctionPio0>();
         let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio0>();
         let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
@@ -139,6 +135,7 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
             .out_pins(9, 3) // I2S data pin
             .side_set_pin_base(10) // I2S Clock Pin
             .autopull(true)
+            .pull_threshold(32)
             .clock_divisor_fixed_point(int, frac)
             .build(sm0);
 
@@ -153,10 +150,15 @@ pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32),
         sm.start();
 
         // Receive
+        let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio0>();
+        let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio0>();
+        let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio0>();
+
         let (mut sm, rx, _) = bsp::hal::pio::PIOBuilder::from_program(installed_reader)
-            .out_pins(6, 3) // I2S data pin
+            .in_pin_base(6) // I2S data pin
             .side_set_pin_base(7) // I2S Clock Pin
             .autopush(true)
+            .push_threshold(32)
             .clock_divisor_fixed_point(int, frac)
             .build(sm1);
 

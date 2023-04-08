@@ -16,6 +16,11 @@ fn main() -> ! {
         rp2040_project_template::rp2040::initialize_pio_state_machines();
 
     let mut sinewave = sine_wave(441.0, 44100);
+    let mut buf = [0u32; 400];
+    for value in buf.iter_mut() {
+        *value = sinewave();
+    }
+    let mut bufindex = 0usize;
 
     led(true);
 
@@ -27,18 +32,28 @@ fn main() -> ! {
     write(0u32);
     loop {
         // // Toggle LED
-        match led_flash() {
-            Some(on) => led(on),
-            None => {}
+        if let Some(on) = led_flash() {
+            led(on);
         }
 
         // write(read());
         // write(read());
-        _ = read();
-        _ = read();
-        let value = sinewave.next().unwrap();
-        write(value);
-        write(value);
+        //  _ = read();
+        //  _ = read();
+        // let value = sinewave();
+        // let value = buf[bufindex];
+        // bufindex += 1;
+        // if bufindex == buf.len() {
+        //     bufindex = 0;
+        // }
+
+        let l = read() * 4;
+        write(l);
+        let r = read() * 4;
+        write(l);
+        // let value = sinewave();
+        // write(value);
+        // write(value);
 
         continue;
     }
