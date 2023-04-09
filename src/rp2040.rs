@@ -239,10 +239,8 @@ pub fn initialize_pio_state_machines(
                             break value;
                         }
                     };
-                    [value0, 0, 0]
-                };
-
-                read_all
+                    [value0, value1, value2]
+                }
             };
 
             // 256fs clock

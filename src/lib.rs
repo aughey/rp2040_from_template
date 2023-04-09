@@ -46,14 +46,14 @@ pub fn sine_wave(_freq: f32, sample_rate: usize) -> impl FnMut() -> u32 {
     }
 
     let mut bufindex = 0usize;
-    return move || {
+    move || {
         let value = buf[bufindex];
         bufindex += 1;
         if bufindex == buf.len() {
             bufindex = 0;
         }
         value
-    };
+    }
 
     // repeat the buffer endlessly
     // buf.into_iter().cycle()
