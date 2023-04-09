@@ -147,22 +147,24 @@ pub fn initialize_pio_state_machines(
                             "                    ;       /--- LRCLK",
                             "                    ;       |/-- BCLK",
                             "public entry_point: ;       ||",
-                            "    irq wait 0       side 0b10 [3]", // wait to be signaled by the system clock
-                            "    set x, 29        side 0b01 [3]",
+                            "    irq wait 0       side 0b11 [3]", // wait to be signaled by the system clock
+                            "    set x, 29        side 0b00 [3]",
+                            "    noop             side 0b01 [3]", // Last LSB of right channel
+                            "    noop             side 0b00 [3]",
                             ".wrap_target        ;        ",
                             "bitloop0:",
                             "    in pins, 1       side 0b01 [3]", // 30 times
                             "    jmp x-- bitloop0 side 0b00 [3]",
-                            "    in pins, 1       side 0b01 [3]", // 31th time
+                            "    in pins, 1       side 0b01 [3]", // 31st time
                             "    nop              side 0b10 [3]", // (raise LRCLK)
-                            "    in pins, 1       side 0b11 [3]", // 32nd time
+                            "    in pins, 1       side 0b11 [3]", // 32nd time (LSB)
                             "    set x, 29        side 0b10 [3]",
                             "bitloop1:           ;        ",
                             "    in pins, 1       side 0b11 [3]", // 30 times
                             "    jmp x-- bitloop1 side 0b10 [3]",
-                            "    in pins, 1       side 0b11 [3]", // 31th time
+                            "    in pins, 1       side 0b11 [3]", // 31st time
                             "    nop              side 0b00 [3]", // (lower LRCLK)
-                            "    in pins, 1       side 0b01 [3]", // 32nd time
+                            "    in pins, 1       side 0b01 [3]", // 32nd time (LSB)
                             "    set x, 29        side 0b00 [3]",
                             ".wrap"
                             options(max_program_size = 32) // Optional, defaults to 32
