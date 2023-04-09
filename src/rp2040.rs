@@ -82,7 +82,7 @@ pub fn initialize_pio_state_machines(
                         "public entry_point: ;       ||",
                         "    irq wait 0       side 0b11 [3]", // wait to be signaled by the system clock
                         "    set x, 29        side 0b00 [3]", // Last LSB of right channel
-                        "    noop             side 0b01 [3]",
+                        "    nop              side 0b01 [3]",
                         ".wrap_target        ;        ",
                         "bitloop0:",
                         "    out pins, 1      side 0b00 [3]", // 31 times
@@ -150,8 +150,8 @@ pub fn initialize_pio_state_machines(
                             "public entry_point: ;       ||",
                             "    irq wait 0       side 0b11 [3]", // wait to be signaled by the system clock
                             "    set x, 29        side 0b00 [3]",
-                            "    noop             side 0b01 [3]", // Last LSB of right channel
-                            "    noop             side 0b00 [3]",
+                            "    nop              side 0b01 [3]", // Last LSB of right channel
+                            "    nop              side 0b00 [3]",
                             ".wrap_target        ;        ",
                             "bitloop0:",
                             "    in pins, 1       side 0b01 [3]", // 30 times
