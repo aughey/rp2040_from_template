@@ -1,3 +1,9 @@
+# Build procedure
+
+```bash
+cargo build --release && elf2uf2-rs ./target/thumbv6m-none-eabi/release/rp2040-project-template && cp ./target/thumbv6m-none-eabi/release/rp2040-project-template.uf2 .
+```
+
 # Prototype Pinout
 
 | RP2040 Pin | Pico Pin | PCM 1808 Pin | Function |

@@ -54,12 +54,12 @@ fn main() -> ! {
         write(0);
         let valuesr = read();
 
-        let sum = valuesl[0] as i64
-            + valuesl[1] as i64
-            + valuesl[2] as i64
-            + valuesr[0] as i64
-            + valuesr[1] as i64
-            + valuesr[2] as i64;
+        let sum = valuesl[0] as i64;
+        // + valuesl[1] as i64
+        // + valuesl[2] as i64
+        // + valuesr[0] as i64
+        // + valuesr[1] as i64
+        // + valuesr[2] as i64;
         //  let sum = sum + valuesr[0] as i64; // + valuesr[1] as i64 + valuesr[2] as i64;
 
         const MAX: i64 = 2147483647;
@@ -71,7 +71,9 @@ fn main() -> ! {
             sum
         };
 
+        //        let sum = sinewave();
         let l = sum as u32;
+
         //  write(l);
         write(l);
 

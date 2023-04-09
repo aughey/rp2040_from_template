@@ -31,7 +31,7 @@ pub fn sine_wave(_freq: f32, sample_rate: usize) -> impl FnMut() -> u32 {
     let mut next_value = || {
         let y = libm::sinf(time * freq * 2.0 * PI);
         let y = y * 1.0;
-        let y = (y * 8388608.0) as i32;
+        let y = (y * 2147483647.0) as i32;
         // Convert i to u without changing the bit pattern
         time += 1.0 / sample_rate;
         if time > PI * 2.0 {
