@@ -154,14 +154,14 @@ pub fn initialize_pio_state_machines(
                             "    in pins, 1       side 0b01 [3]", // 30 times
                             "    jmp x-- bitloop0 side 0b00 [3]",
                             "    in pins, 1       side 0b01 [3]", // 31th time
-                            "    nop              side 0b10 [3]", 
+                            "    nop              side 0b10 [3]", // (raise LRCLK)
                             "    in pins, 1       side 0b11 [3]", // 32nd time
                             "    set x, 29        side 0b10 [3]",
                             "bitloop1:           ;        ",
                             "    in pins, 1       side 0b11 [3]", // 30 times
                             "    jmp x-- bitloop1 side 0b10 [3]",
                             "    in pins, 1       side 0b11 [3]", // 31th time
-                            "    nop              side 0b00 [3]", 
+                            "    nop              side 0b00 [3]", // (lower LRCLK)
                             "    in pins, 1       side 0b01 [3]", // 32nd time
                             "    set x, 29        side 0b00 [3]",
                             ".wrap"
