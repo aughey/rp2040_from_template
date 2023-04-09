@@ -223,7 +223,7 @@ pub fn initialize_pio_state_machines(
                 sm.set_pindirs([(3, bsp::hal::pio::PinDir::Input)].into_iter());
                 sm.start();
 
-                let read_all = move || {
+                move || {
                     let value0 = loop {
                         if let Some(value) = rx0.read() {
                             break value;
