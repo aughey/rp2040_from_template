@@ -155,15 +155,17 @@ pub fn initialize_pio_state_machines(
                             "    in pins, 1       side 0b01 [3]", // 30 times
                             "    jmp x-- bitloop0 side 0b00 [3]",
                             "    in pins, 1       side 0b01 [3]", // 31st time
-                            "    nop              side 0b10 [3]", // (raise LRCLK)
-                            "    in pins, 1       side 0b11 [3]", // 32nd time (LSB)
+                            "    in null,1        side 0b10 [3]", // (raise LRCLK)
+                            "    push noblock     side 0b11 [3]", // Drop the 32nd LSB bit
+                            //"    in pins, 1       side 0b11 [3]", // 32nd time (LSB)
                             "    set x, 29        side 0b10 [3]",
                             "bitloop1:           ;        ",
                             "    in pins, 1       side 0b11 [3]", // 30 times
                             "    jmp x-- bitloop1 side 0b10 [3]",
                             "    in pins, 1       side 0b11 [3]", // 31st time
-                            "    nop              side 0b00 [3]", // (lower LRCLK)
-                            "    in pins, 1       side 0b01 [3]", // 32nd time (LSB)
+                            "    in null,1        side 0b00 [3]", // (lower LRCLK)
+                            "    push noblock     side 0b01 [3]", // Drop the 32nd LSB bit
+                            //"    in pins, 1       side 0b01 [3]", // 32nd time (LSB)
                             "    set x, 29        side 0b00 [3]",
                             ".wrap"
                             options(max_program_size = 32) // Optional, defaults to 32
@@ -187,8 +189,8 @@ pub fn initialize_pio_state_machines(
                     bsp::hal::pio::PIOBuilder::from_program(unsafe { installed_reader.share() })
                         .in_pin_base(6) // I2S data pin
                         .side_set_pin_base(7) // I2S Clock Pin
-                        .autopush(true)
-                        .push_threshold(32)
+                        .autopush(false) // we want to manually push with noblock
+                        // .push_threshold(32)
                         .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
                         .build(sm0);
 
@@ -202,36 +204,44 @@ pub fn initialize_pio_state_machines(
                 );
                 sm.start();
 
-                if false {
-                    // SECOND READER
-                    // install the same thing on sm1 (expecting another one there, but not actually using it)
-                    let _pin4 = pins.gpio4.into_mode::<bsp::hal::gpio::FunctionPio1>();
-                    let (mut sm, mut rx1, _) = bsp::hal::pio::PIOBuilder::from_program(unsafe {
-                        installed_reader.share()
-                    })
-                    .in_pin_base(4) // I2S data pin
-                    //.side_set_pin_base(7) // I2S Clock Pin
-                    .autopush(true)
-                    .push_threshold(32)
-                    .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
-                    .build(sm1);
-                    sm.set_pindirs([(4, bsp::hal::pio::PinDir::Input)].into_iter());
-                    sm.start();
+                // SECOND READER
+                // install the same thing on sm1 (expecting another one there, but not actually using it)
+                let _pin1 = pins.gpio1.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin2 = pins.gpio2.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin3 = pins.gpio3.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin4 = pins.gpio4.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let (mut sm, mut rx1, _) =
+                    bsp::hal::pio::PIOBuilder::from_program(unsafe { installed_reader.share() })
+                        .in_pin_base(4) // I2S data pin
+                        .side_set_pin_base(13) // I2S Clock Pin
+                        .autopush(false) // we want to manually push with noblock
+                        //     .push_threshold(32)
+                        .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
+                        .build(sm1);
+                sm.set_pindirs(
+                    [
+                        (4, bsp::hal::pio::PinDir::Input),
+                        (1, bsp::hal::pio::PinDir::Output),
+                        (2, bsp::hal::pio::PinDir::Output),
+                        (3, bsp::hal::pio::PinDir::Output),
+                    ]
+                    .into_iter(),
+                );
+                sm.start();
 
-                    // THIRD READER
-                    // install the same thing on sm2 (expecting another one there, but not actually using it)
-                    let _pin3 = pins.gpio3.into_mode::<bsp::hal::gpio::FunctionPio1>();
-                    let (mut sm, mut rx2, _) =
-                        bsp::hal::pio::PIOBuilder::from_program(installed_reader)
-                            .in_pin_base(3) // I2S data pin
-                            //.side_set_pin_base(7) // I2S Clock Pin
-                            .autopush(true)
-                            .push_threshold(32)
-                            .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
-                            .build(sm2);
-                    sm.set_pindirs([(3, bsp::hal::pio::PinDir::Input)].into_iter());
-                    sm.start();
-                }
+                // // THIRD READER
+                // // install the same thing on sm2 (expecting another one there, but not actually using it)
+                // let _pin3 = pins.gpio3.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                // let (mut sm, mut rx2, _) =
+                //     bsp::hal::pio::PIOBuilder::from_program(installed_reader)
+                //         .in_pin_base(3) // I2S data pin
+                //         //.side_set_pin_base(7) // I2S Clock Pin
+                //         .autopush(true)
+                //         .push_threshold(32)
+                //         .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
+                //         .build(sm2);
+                // sm.set_pindirs([(3, bsp::hal::pio::PinDir::Input)].into_iter());
+                // sm.start();
 
                 move || {
                     let value0 = loop {
@@ -239,17 +249,17 @@ pub fn initialize_pio_state_machines(
                             break value;
                         }
                     };
-                    // let value1 = loop {
-                    //     if let Some(value) = rx1.read() {
-                    //         break value;
-                    //     }
-                    // };
+                    let value1 = loop {
+                        if let Some(value) = rx1.read() {
+                            break value;
+                        }
+                    };
                     // let value2 = loop {
                     //     if let Some(value) = rx2.read() {
                     //         break value;
                     //     }
                     // };
-                    [value0, 0, 0]
+                    [value0, value1, 0]
                 }
             };
 
@@ -258,10 +268,11 @@ pub fn initialize_pio_state_machines(
                 let installed_system_clock = {
                     let program_system_clock = {
                         let program_with_defines = pio_proc::pio_asm!(
-                            "irq clear 0           ", // Launch all programs waiting
+                            ".side_set 2",
+                            "irq clear 0         side 0b00  ", // Launch all programs waiting
                             ".wrap_target          ",
-                            "    set pins, 1       ",
-                            "    set pins, 0       ",
+                            "    set pins, 1     side 0b11  ",
+                            "    set pins, 0     side 0b00  ",
                             ".wrap"
                             options(max_program_size = 32) // Optional, defaults to 32
                         );
@@ -275,17 +286,18 @@ pub fn initialize_pio_state_machines(
                     pio.install(&program_system_clock).unwrap()
                 };
 
-                let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin0 = pins.gpio0.into_mode::<bsp::hal::gpio::FunctionPio1>();
 
                 let (mut sm, _, _) =
                     bsp::hal::pio::PIOBuilder::from_program(installed_system_clock)
                         // .out_pins(8, 1) // High Frequency I2S Sys Clock
                         //.side_set_pin_base(10) // I2S Clock Pin
                         //.autopull(true)
-                        .set_pins(5, 1)
+                        .set_pins(0, 1)
+                        .side_set_pin_base(1)
                         .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
                         .build(sm3);
-                sm.set_pindirs([(5, bsp::hal::pio::PinDir::Output)].into_iter());
+                sm.set_pindirs([(0, bsp::hal::pio::PinDir::Output)].into_iter());
                 sm.start();
             }
 

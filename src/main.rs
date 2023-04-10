@@ -50,32 +50,32 @@ fn main() -> ! {
         //     bufindex = 0;
         // }
 
-        let valuesl = read();
-        write(0);
-        let valuesr = read();
+        let sum = {
+            let valuesl = read();
+            let valuesr = read();
 
-        let sum = valuesl[0] as i64;
-        // + valuesl[1] as i64
-        // + valuesl[2] as i64
-        // + valuesr[0] as i64
-        // + valuesr[1] as i64
-        // + valuesr[2] as i64;
-        //  let sum = sum + valuesr[0] as i64; // + valuesr[1] as i64 + valuesr[2] as i64;
+            let to_i64 = |value| Into::<i64>::into(value as i32);
 
-        const MAX: i64 = 2147483647;
-        let sum = if sum > MAX {
-            MAX
-        } else if sum < -MAX {
-            -MAX
-        } else {
-            sum
+            let sum = to_i64(valuesl[0])
+                + to_i64(valuesl[1])
+                + to_i64(valuesl[2])
+                + to_i64(valuesr[0])
+                + to_i64(valuesr[1])
+                + to_i64(valuesr[2]);
+
+            const MAX: i64 = 2147483647;
+            let sum = if sum > MAX {
+                MAX
+            } else if sum < -MAX {
+                -MAX
+            } else {
+                sum
+            };
+            sum as u32
         };
 
-        //        let sum = sinewave();
-        let l = sum as u32;
-
-        //  write(l);
-        write(l);
+        write(sum);
+        write(sum);
 
         // let sum = sum + values.iter().fold(sum, |acc, x| acc + (*x as i64));
 
