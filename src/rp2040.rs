@@ -206,24 +206,22 @@ pub fn initialize_pio_state_machines(
 
                 // SECOND READER
                 // install the same thing on sm1 (expecting another one there, but not actually using it)
-                let _pin1 = pins.gpio1.into_mode::<bsp::hal::gpio::FunctionPio1>();
-                let _pin2 = pins.gpio2.into_mode::<bsp::hal::gpio::FunctionPio1>();
                 let _pin3 = pins.gpio3.into_mode::<bsp::hal::gpio::FunctionPio1>();
                 let _pin4 = pins.gpio4.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
                 let (mut sm, mut rx1, _) =
                     bsp::hal::pio::PIOBuilder::from_program(unsafe { installed_reader.share() })
-                        .in_pin_base(4) // I2S data pin
-                        .side_set_pin_base(13) // I2S Clock Pin
+                        .in_pin_base(3) // I2S data pin
+                        .side_set_pin_base(4) // I2S Clock Pin
                         .autopush(false) // we want to manually push with noblock
                         //     .push_threshold(32)
                         .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
                         .build(sm1);
                 sm.set_pindirs(
                     [
-                        (4, bsp::hal::pio::PinDir::Input),
-                        (1, bsp::hal::pio::PinDir::Output),
-                        (2, bsp::hal::pio::PinDir::Output),
-                        (3, bsp::hal::pio::PinDir::Output),
+                        (3, bsp::hal::pio::PinDir::Input),
+                        (4, bsp::hal::pio::PinDir::Output),
+                        (5, bsp::hal::pio::PinDir::Output),
                     ]
                     .into_iter(),
                 );
@@ -287,17 +285,19 @@ pub fn initialize_pio_state_machines(
                 };
 
                 let _pin0 = pins.gpio0.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin1 = pins.gpio1.into_mode::<bsp::hal::gpio::FunctionPio1>();
 
                 let (mut sm, _, _) =
                     bsp::hal::pio::PIOBuilder::from_program(installed_system_clock)
                         // .out_pins(8, 1) // High Frequency I2S Sys Clock
                         //.side_set_pin_base(10) // I2S Clock Pin
                         //.autopull(true)
-                        .set_pins(0, 1)
+                        .set_pins(0, 2)
                         .side_set_pin_base(1)
                         .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
                         .build(sm3);
                 sm.set_pindirs([(0, bsp::hal::pio::PinDir::Output)].into_iter());
+                sm.set_pindirs([(1, bsp::hal::pio::PinDir::Output)].into_iter());
                 sm.start();
             }
 
