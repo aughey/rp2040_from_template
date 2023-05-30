@@ -15,9 +15,9 @@ cargo build --release && elf2uf2-rs ./target/thumbv6m-none-eabi/release/rp2040-p
 | 39         | 39       |                  | VSYS +5v  |
 | 36         | 36       |  3.3v            | 3v3(OUT)  |
 | 33         | 38       |  FMT,MD0,MD1,GND | GND       |
-| 15         | 15       |                  | GP11,LRCK |
-| 14         | 14       |                  | GP10,BCK  |
-| 12         | 12       |                  | GP9,DIN   |
+| XX         | 15       |                  | GP22,LRCK |
+| xx         | 14       |                  | GP21,BCK  |
+| xx         | 12       |                  | GP20,DIN  |
 | 11         |          |         LRC      | GP8,LRCK  |
 | 10         |          |         BCK      | GP7,BCK   |
 | 9          |          |         OUT      | GP6,OUT   |
@@ -39,6 +39,13 @@ GPIO 7 (currently) is the Bit clock for the first 1808 running at ~1.8Mhz
 GPIO 8 (currently) is the LR clock running at 44.1khz
 
 GPIO 6 (currently) is the Data read pin from the 1808
+
+NEW PLAN
+
+GPIO 2,3,4,5,6,7,8,9 are input pins
+
+Bit clock moves to GPIO10
+LR clock moves to GPIO11
 
 
 # Project template for rp2040-hal

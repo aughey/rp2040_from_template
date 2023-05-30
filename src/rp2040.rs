@@ -15,8 +15,7 @@ use bsp::hal::{
     watchdog::Watchdog,
 };
 
-pub fn initialize_pio_state_machines(
-) -> (impl FnMut() -> [u32; 3], impl FnMut(u32), impl FnMut(bool)) {
+pub fn initialize_pio_state_machines() -> (impl FnMut() -> u32, impl FnMut(u32), impl FnMut(bool)) {
     let mut pac = pac::Peripherals::take().unwrap();
     //let core = pac::CorePeripherals::take().unwrap();
     let mut watchdog = Watchdog::new(pac.WATCHDOG);
@@ -69,9 +68,9 @@ pub fn initialize_pio_state_machines(
             // Initialize and start PIO
             let (mut pio, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
 
-            let _pin9 = pins.gpio9.into_mode::<bsp::hal::gpio::FunctionPio0>();
-            let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio0>();
-            let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio0>();
+            let _pin20 = pins.gpio20.into_mode::<bsp::hal::gpio::FunctionPio0>();
+            let _pin21 = pins.gpio21.into_mode::<bsp::hal::gpio::FunctionPio0>();
+            let _pin22 = pins.gpio22.into_mode::<bsp::hal::gpio::FunctionPio0>();
 
             let installed_writer = {
                 let program_output = {
@@ -111,8 +110,8 @@ pub fn initialize_pio_state_machines(
             // };
 
             let (mut sm, _, tx) = bsp::hal::pio::PIOBuilder::from_program(installed_writer)
-                .out_pins(9, 3) // I2S data pin
-                .side_set_pin_base(10) // I2S Clock Pin
+                .out_pins(20, 3) // I2S data pin
+                .side_set_pin_base(21) // I2S Clock Pin
                 .autopull(true)
                 .pull_threshold(32)
                 .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
@@ -120,9 +119,9 @@ pub fn initialize_pio_state_machines(
 
             sm.set_pindirs(
                 [
-                    (9, bsp::hal::pio::PinDir::Output),
-                    (10, bsp::hal::pio::PinDir::Output),
-                    (11, bsp::hal::pio::PinDir::Output),
+                    (20, bsp::hal::pio::PinDir::Output),
+                    (21, bsp::hal::pio::PinDir::Output),
+                    (22, bsp::hal::pio::PinDir::Output),
                 ]
                 .into_iter(),
             );
@@ -152,19 +151,19 @@ pub fn initialize_pio_state_machines(
                             "    set x, 29        side 0b00 [3]",
                             ".wrap_target        ;        ",
                             "bitloop0:",
-                            "    in pins, 1       side 0b01 [3]", // 30 times
+                            "    in pins, 8       side 0b01 [3]", // 30 times
                             "    jmp x-- bitloop0 side 0b00 [3]",
-                            "    in pins, 1       side 0b01 [3]", // 31st time
-                            "    in null,1        side 0b10 [3]", // (raise LRCLK)
-                            "    push noblock     side 0b11 [3]", // Drop the 32nd LSB bit
+                            "    in pins, 8       side 0b01 [3]", // 31st time
+                            "    nop              side 0b10 [3]", // (raise LRCLK)
+                            "    in pins, 8      side 0b11 [3]", //  32nd LSB bit
                             //"    in pins, 1       side 0b11 [3]", // 32nd time (LSB)
                             "    set x, 29        side 0b10 [3]",
                             "bitloop1:           ;        ",
-                            "    in pins, 1       side 0b11 [3]", // 30 times
+                            "    in pins, 8       side 0b11 [3]", // 30 times
                             "    jmp x-- bitloop1 side 0b10 [3]",
-                            "    in pins, 1       side 0b11 [3]", // 31st time
-                            "    in null,1        side 0b00 [3]", // (lower LRCLK)
-                            "    push noblock     side 0b01 [3]", // Drop the 32nd LSB bit
+                            "    in pins, 8       side 0b11 [3]", // 31st time
+                            "    nop              side 0b00 [3]", // (lower LRCLK)
+                            "    in pins, 8       side 0b01 [3]", //  32nd LSB bit
                             //"    in pins, 1       side 0b01 [3]", // 32nd time (LSB)
                             "    set x, 29        side 0b00 [3]",
                             ".wrap"
@@ -181,24 +180,38 @@ pub fn initialize_pio_state_machines(
                     pio.install(&program_input).unwrap()
                 };
 
+                let _pin2 = pins.gpio2.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin3 = pins.gpio3.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin4 = pins.gpio4.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
                 let _pin6 = pins.gpio6.into_mode::<bsp::hal::gpio::FunctionPio1>();
                 let _pin7 = pins.gpio7.into_mode::<bsp::hal::gpio::FunctionPio1>();
                 let _pin8 = pins.gpio8.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin9 = pins.gpio9.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin10 = pins.gpio10.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                let _pin11 = pins.gpio11.into_mode::<bsp::hal::gpio::FunctionPio1>();
 
                 let (mut sm, mut rx0, _) =
                     bsp::hal::pio::PIOBuilder::from_program(unsafe { installed_reader.share() })
-                        .in_pin_base(6) // I2S data pin
-                        .side_set_pin_base(7) // I2S Clock Pin
-                        .autopush(false) // we want to manually push with noblock
+                        .in_pin_base(2) // I2S data pin
+                        .side_set_pin_base(10) // I2S Clock Pin
+                        .autopush(true) // we want to manually push with noblock
                         // .push_threshold(32)
                         .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
                         .build(sm0);
 
                 sm.set_pindirs(
                     [
+                        (2, bsp::hal::pio::PinDir::Input),
+                        (3, bsp::hal::pio::PinDir::Input),
+                        (4, bsp::hal::pio::PinDir::Input),
+                        (5, bsp::hal::pio::PinDir::Input),
                         (6, bsp::hal::pio::PinDir::Input),
-                        (7, bsp::hal::pio::PinDir::Output),
-                        (8, bsp::hal::pio::PinDir::Output),
+                        (7, bsp::hal::pio::PinDir::Input),
+                        (8, bsp::hal::pio::PinDir::Input),
+                        (9, bsp::hal::pio::PinDir::Input),
+                        (10, bsp::hal::pio::PinDir::Output),
+                        (11, bsp::hal::pio::PinDir::Output),
                     ]
                     .into_iter(),
                 );
@@ -206,26 +219,26 @@ pub fn initialize_pio_state_machines(
 
                 // SECOND READER
                 // install the same thing on sm1 (expecting another one there, but not actually using it)
-                let _pin3 = pins.gpio3.into_mode::<bsp::hal::gpio::FunctionPio1>();
-                let _pin4 = pins.gpio4.into_mode::<bsp::hal::gpio::FunctionPio1>();
-                let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
-                let (mut sm, mut rx1, _) =
-                    bsp::hal::pio::PIOBuilder::from_program(unsafe { installed_reader.share() })
-                        .in_pin_base(3) // I2S data pin
-                        .side_set_pin_base(4) // I2S Clock Pin
-                        .autopush(false) // we want to manually push with noblock
-                        //     .push_threshold(32)
-                        .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
-                        .build(sm1);
-                sm.set_pindirs(
-                    [
-                        (3, bsp::hal::pio::PinDir::Input),
-                        (4, bsp::hal::pio::PinDir::Output),
-                        (5, bsp::hal::pio::PinDir::Output),
-                    ]
-                    .into_iter(),
-                );
-                sm.start();
+                // let _pin3 = pins.gpio3.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                // let _pin4 = pins.gpio4.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                // let _pin5 = pins.gpio5.into_mode::<bsp::hal::gpio::FunctionPio1>();
+                // let (mut sm, mut rx1, _) =
+                //     bsp::hal::pio::PIOBuilder::from_program(unsafe { installed_reader.share() })
+                //         .in_pin_base(3) // I2S data pin
+                //         .side_set_pin_base(4) // I2S Clock Pin
+                //         .autopush(false) // we want to manually push with noblock
+                //         //     .push_threshold(32)
+                //         .clock_divisor_fixed_point(system_clock_int, system_clock_frac)
+                //         .build(sm1);
+                // sm.set_pindirs(
+                //     [
+                //         (3, bsp::hal::pio::PinDir::Input),
+                //         (4, bsp::hal::pio::PinDir::Output),
+                //         (5, bsp::hal::pio::PinDir::Output),
+                //     ]
+                //     .into_iter(),
+                // );
+                // sm.start();
 
                 // // THIRD READER
                 // // install the same thing on sm2 (expecting another one there, but not actually using it)
@@ -247,17 +260,17 @@ pub fn initialize_pio_state_machines(
                             break value;
                         }
                     };
-                    let value1 = loop {
-                        if let Some(value) = rx1.read() {
-                            break value;
-                        }
-                    };
+                    // let value1 = loop {
+                    //     if let Some(value) = rx1.read() {
+                    //         break value;
+                    //     }
+                    // };
                     // let value2 = loop {
                     //     if let Some(value) = rx2.read() {
                     //         break value;
                     //     }
                     // };
-                    [value0, value1, 0]
+                    value0
                 }
             };
 
