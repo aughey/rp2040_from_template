@@ -1,23 +1,27 @@
 # Build procedure
 
 ```bash
+rustup target add thumbv6m-none-eabi
+cargo install flip-link
+sudo apt update && sudo apt install -y libudev-dev
+cargo install elf2uf2-rs --locked
 cargo build --release && elf2uf2-rs ./target/thumbv6m-none-eabi/release/rp2040-project-template && cp ./target/thumbv6m-none-eabi/release/rp2040-project-template.uf2 .
 ```
 
 # Prototype Pinout
 
-| RP2040 Pin | Pico Pin | PCM 1808 Pin | Function |
-|------------|----------|--------------|----------|
-| 39          | 39        |             | VSYS +5v      |
-| 36        | 36        |  3.3v           | 3v3(OUT)      |
-| 33      | 38        |  FMT,MD0,MD1,GND           | GND      |
-| 15        | 15        |             | GP11,LRCK      |
-| 14        | 14        |             | GP10,BCK      |
-| 12        | 12        |             | GP9,DIN      |
-| 11        |         |         LRC    | GP8,LRCK      |
-| 10        |         |         BCK    | GP7,BCK      |
-| 9        |         |         OUT    | GP6,OUT      |
-| 7        |         |         SCK    | GP5,SCK      |
+| RP2040 Pin | Pico Pin | PCM 1808 Pin     | Function  |
+|------------|----------|------------------|-----------|
+| 39         | 39       |                  | VSYS +5v  |
+| 36         | 36       |  3.3v            | 3v3(OUT)  |
+| 33         | 38       |  FMT,MD0,MD1,GND | GND       |
+| 15         | 15       |                  | GP11,LRCK |
+| 14         | 14       |                  | GP10,BCK  |
+| 12         | 12       |                  | GP9,DIN   |
+| 11         |          |         LRC      | GP8,LRCK  |
+| 10         |          |         BCK      | GP7,BCK   |
+| 9          |          |         OUT      | GP6,OUT   |
+| 7          |          |         SCK      | GP5,SCK   |
 
 # i2s timing diagram
 ![i2s](i2s.png)

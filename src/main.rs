@@ -74,7 +74,7 @@ fn main() -> ! {
             sum as u32
         };
 
-        //let sum = sinewave();
+        let sum = sinewave();
 
         write(sum);
         write(sum);

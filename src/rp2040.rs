@@ -284,6 +284,8 @@ pub fn initialize_pio_state_machines(
                     pio.install(&program_system_clock).unwrap()
                 };
 
+                assert!(available_code_space > 0);
+
                 let _pin0 = pins.gpio0.into_mode::<bsp::hal::gpio::FunctionPio1>();
                 let _pin1 = pins.gpio1.into_mode::<bsp::hal::gpio::FunctionPio1>();
 
