@@ -26,6 +26,21 @@ cargo build --release && elf2uf2-rs ./target/thumbv6m-none-eabi/release/rp2040-p
 # i2s timing diagram
 ![i2s](i2s.png)
 
+# Pin functions
+
+Our sampling frequency is 44.1Khz
+
+We run the system clock at 256fs, or 11.289Mhz.
+
+GPIO 0 and 1 are the system clock for the PCM 1808 running at this 11.3Mhz clock
+
+GPIO 7 (currently) is the Bit clock for the first 1808 running at ~1.8Mhz
+
+GPIO 8 (currently) is the LR clock running at 44.1khz
+
+GPIO 6 (currently) is the Data read pin from the 1808
+
+
 # Project template for rp2040-hal
 
 This template is intended as a starting point for developing your own firmware based on the rp2040-hal.
